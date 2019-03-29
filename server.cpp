@@ -5,16 +5,17 @@
 #include <thread>
 #include <cstdint>
 #include <vector>
-// #include "libevent-2.1.8-stable/include/evhttp.h"
 #include <evhttp.h>
+#include <unistd.h>
 
-// #include "boost/program_options.hpp" 
-// #include "boost/filesystem.hpp" 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
+char* PATH;
+
 struct server_data
 {
+  std::string path;
   std::string ip;
   int port;
   int workers;
@@ -23,6 +24,7 @@ struct server_data
 };
 
 using namespace boost::program_options;
+using namespace boost::filesystem;
 
 server_data cmline_parser(int argc, char *argv[])
 {
@@ -33,8 +35,9 @@ server_data cmline_parser(int argc, char *argv[])
     options_description desc("Options");
     std::string ip = "";
     try{
-        std::string appName = boost::filesystem::basename(argv[0]); 
+        std::string appName = basename(argv[0]); 
         desc.add_options()
+            ("dir,d",value<std::string>()->default_value("dir"),"Path")
             ("ip,i",value<std::string>()->default_value("0.0.0.0"),"IP")
             ("port,p",value<int>()->default_value(8000),"PORT")
             ("workers,w",value<int>()->default_value(1),"Count of workers")
@@ -55,7 +58,8 @@ server_data cmline_parser(int argc, char *argv[])
                 std::cout << desc << '\n';}
             sd.workers=vm["workers"].as<int>();
             sd.port=vm["port"].as<int>();
-            sd.ip=vm["ip"].as<std::string>();         
+            sd.ip=vm["ip"].as<std::string>(); 
+            sd.path=vm["dir"].as<std::string>();       
         }
     }
     catch (const error &ex)
@@ -76,7 +80,7 @@ int server(int argc, char *argv[])
   if (sd.help==true)
     return 0;
 
-  if (!event_init())
+  if (!event_init())//event_init() - Initialize the event API.
   {
     std::cerr << "Failed to init libevent." << std::endl;
     return -1;
@@ -85,7 +89,10 @@ int server(int argc, char *argv[])
   char *SrvAddress = const_cast<char*>((sd.ip).c_str());
   std::uint16_t SrvPort = sd.port;
   int const SrvThreadCount = sd.workers;
+
+  PATH=const_cast<char*>((sd.path).c_str());
  
+  std::cout<<"path - "<<PATH<<std::endl;
   std::cout<<"ip - "<<SrvAddress<<std::endl;
   std::cout<<"port - "<<SrvPort<<std::endl;
   std::cout<<"workers - "<<SrvThreadCount<<std::endl;
@@ -93,14 +100,57 @@ int server(int argc, char *argv[])
 
   try
   {
+    //What_to_do_on_Requests
     void (*OnRequest)(evhttp_request *, void *) = [] (evhttp_request *req, void *)
     {
-      auto *OutBuf = evhttp_request_get_output_buffer(req);
+      auto *OutBuf = evhttp_request_get_output_buffer(req);//getting the output buffer
       if (!OutBuf)
         return;
-      evbuffer_add_printf(OutBuf, "<html><body><center><h1>Hello World!</h1></center></body></html>");
-      evhttp_send_reply(req, HTTP_OK, "", OutBuf);
+      
+      const char* request=evhttp_request_get_uri(req);
+      if (strcmp(request,"/")==0) 
+      {
+          evbuffer_add_printf(OutBuf, "<html><body><center><h1>Hello world</h1></center></body></html>");
+          evhttp_send_reply(req, HTTP_OK, "OK", OutBuf);//sending an HTML reply to the client
+      }
+      else 
+      {
+        char temp_request[50];
+        strcpy(temp_request,PATH);
+        strcat(temp_request,request); 
+        FILE *f;
+        if (strcmp(request + strlen(request) - 4, "html") == 0)
+            f = fopen(temp_request, "r");
+        else 
+            f = fopen(temp_request, "rb");
+        if (!f)
+        {
+          evbuffer_add_printf(OutBuf, "<html><body><center><h1>404   FILE  NOT  FOUND   404</h1></center></body></html>");
+          evhttp_send_reply(req, HTTP_NOTFOUND, "NOT FOUND", OutBuf);//sending an HTML reply to the client
+        }
+        else
+        {
+          if (strcmp(request + strlen(request) - 4, "html") == 0)
+          {
+            char *buf = new char[10000];
+            fread(buf, sizeof(char), 10000, f);
+            evbuffer_add_printf(OutBuf, buf);
+            evhttp_send_reply(req, HTTP_OK, "OK", OutBuf);//sending an HTML reply to the client
+            delete []buf;
+          }
+          else
+          {		
+            evkeyvalq* h_buf=evhttp_request_get_output_headers(req);
+            evhttp_remove_header(h_buf, "Content-Type");
+            evhttp_add_header(h_buf, "Content-Type", "image/bmp");			
+            int fd=fileno(f);
+            evbuffer_add_file(OutBuf, fd, 0, 1000000);
+            evhttp_send_reply(req, HTTP_OK, "OK", OutBuf);//sending an HTML reply to the client
+          }
+        }       
+      }
     };
+    //////////////////////////////////////////////////////////////////////////////////////////////////
 
     std::exception_ptr InitExcept;
     bool volatile IsRun = true;
@@ -110,29 +160,39 @@ int server(int argc, char *argv[])
     {
       try
       {
+        //creating new event_base(structure to hold information and state for a Libevent dispatch loop)
         std::unique_ptr<event_base, decltype(&event_base_free)> EventBase(event_base_new(), &event_base_free);
         if (!EventBase)
           throw std::runtime_error("Failed to create new base_event.");
-        std::unique_ptr<evhttp, decltype(&evhttp_free)> EvHttp(evhttp_new(EventBase.get()), &evhttp_free);
+        ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+        //creating new EvHttp 
+        std::unique_ptr<evhttp, decltype(&evhttp_free)> EvHttp(evhttp_new(EventBase.get()), &evhttp_free);//evhttp_new - create a new HTTP server
+                                                                                                          //evhttp_free - free the previously created HTTP server. 
         if (!EvHttp)
           throw std::runtime_error("Failed to create new evhttp.");
-          evhttp_set_gencb(EvHttp.get(), OnRequest, nullptr);
+        evhttp_set_gencb(EvHttp.get(), OnRequest, nullptr);	//Set a callback for all requests that are not caught by specific callbacks. 
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
         if (Socket == -1)
         {
-          auto *BoundSock = evhttp_bind_socket_with_handle(EvHttp.get(), SrvAddress, SrvPort);
+          auto *BoundSock = evhttp_bind_socket_with_handle(EvHttp.get(), SrvAddress, SrvPort);//Binds an HTTP server on the specified address and port, 
+                                                                                              //returns a handle for referencing the socket.
+
           if (!BoundSock)
             throw std::runtime_error("Failed to bind server socket.");
-          if ((Socket = evhttp_bound_socket_get_fd(BoundSock)) == -1)
+          if ((Socket = evhttp_bound_socket_get_fd(BoundSock)) == -1)//evhttp_bound_socket_get_fd - get the raw file descriptor referenced by an evhttp_bound_socket.
             throw std::runtime_error("Failed to get server socket for next instance.");
         }
         else
         {
-          if (evhttp_accept_socket(EvHttp.get(), Socket) == -1)
+          if (evhttp_accept_socket(EvHttp.get(), Socket) == -1)//evhttp_accept_socket - makes an HTTP server accept connections on the specified socket.
             throw std::runtime_error("Failed to bind server socket for new instance.");
         }
+
         for ( ; IsRun ; )
         {
-          event_base_loop(EventBase.get(), EVLOOP_NONBLOCK);
+          event_base_loop(EventBase.get(), EVLOOP_NONBLOCK);//Wait for events to become active, and run their callbacks.
           std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
       }

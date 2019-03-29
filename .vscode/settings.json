@@ -71,6 +71,7 @@
         "typeinfo": "cpp",
         "utility": "cpp",
         "variant": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "*.ipp": "cpp"
     }
 }
