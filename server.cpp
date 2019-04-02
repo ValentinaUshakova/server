@@ -7,11 +7,15 @@
 #include <vector>
 #include <evhttp.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
 char* PATH;
+bool verbose;
+time_t t=time(NULL);
+using namespace std::chrono;
 
 struct server_data
 {
@@ -91,18 +95,27 @@ int server(int argc, char *argv[])
   int const SrvThreadCount = sd.workers;
 
   PATH=const_cast<char*>((sd.path).c_str());
+  verbose=sd.verbose;
  
+  if (verbose==1){
   std::cout<<"path - "<<PATH<<std::endl;
   std::cout<<"ip - "<<SrvAddress<<std::endl;
   std::cout<<"port - "<<SrvPort<<std::endl;
   std::cout<<"workers - "<<SrvThreadCount<<std::endl;
   std::cout<<"verbose - "<<sd.verbose<<std::endl;
+  }
 
   try
   {
     //What_to_do_on_Requests
     void (*OnRequest)(evhttp_request *, void *) = [] (evhttp_request *req, void *)
     {
+      high_resolution_clock::time_point begin_time=high_resolution_clock::now();
+      /*if (verbose==1)
+      {
+        t=time(NULL);
+        std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<" getting the output buffer"<<std::endl;
+      }*/
       auto *OutBuf = evhttp_request_get_output_buffer(req);//getting the output buffer
       if (!OutBuf)
         return;
@@ -110,7 +123,17 @@ int server(int argc, char *argv[])
       const char* request=evhttp_request_get_uri(req);
       if (strcmp(request,"/")==0) 
       {
-          evbuffer_add_printf(OutBuf, "<html><body><center><h1>Hello world</h1></center></body></html>");
+          if (verbose==1)
+          {
+            t=time(NULL);
+            std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  /  200 OK"<<std::endl;
+          }
+          evbuffer_add_printf(OutBuf, "<html><body><center><h1>Welcome! <h1><h2>Enter the name of the file!</h2></center></body></html>");
+          /*if (verbose==1)
+          {
+            t=time(NULL);
+            std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"sending an HTML reply to the client"<<std::endl;
+          }*/
           evhttp_send_reply(req, HTTP_OK, "OK", OutBuf);//sending an HTML reply to the client
       }
       else 
@@ -119,36 +142,91 @@ int server(int argc, char *argv[])
         strcpy(temp_request,PATH);
         strcat(temp_request,request); 
         FILE *f;
+        /*if (verbose==1)
+        {
+            t=time(NULL);
+            std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"trying to open file "<<temp_request<<std::endl;
+        }*/
         if (strcmp(request + strlen(request) - 4, "html") == 0)
             f = fopen(temp_request, "r");
         else 
             f = fopen(temp_request, "rb");
         if (!f)
         {
+          if (verbose==1){
+            t=time(NULL);
+            std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  "<<request<<" 404 Not found"<<std::endl;
+          }
           evbuffer_add_printf(OutBuf, "<html><body><center><h1>404   FILE  NOT  FOUND   404</h1></center></body></html>");
+          /*if (verbose==1){
+            t=time(NULL);
+            std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"sending an HTML reply to the client"<<std::endl;
+          }*/
           evhttp_send_reply(req, HTTP_NOTFOUND, "NOT FOUND", OutBuf);//sending an HTML reply to the client
         }
         else
         {
+          /*if (verbose==1){
+            t=time(NULL);
+            std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"file opening was successful!"<<std::endl;
+          }*/
           if (strcmp(request + strlen(request) - 4, "html") == 0)
           {
+            /*if (verbose==1){
+              t=time(NULL);
+              std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"reading requested html file..."<<std::endl;
+            }*/
             char *buf = new char[10000];
             fread(buf, sizeof(char), 10000, f);
+            /*if (verbose==1)
+            {
+              t=time(NULL);
+              std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"adding file data to the output buffer"<<std::endl;
+            }*/
             evbuffer_add_printf(OutBuf, buf);
+            if (verbose==1)
+            {
+              t=time(NULL);
+              std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  "<<temp_request<<" 200 OK"<<std::endl;
+            }
             evhttp_send_reply(req, HTTP_OK, "OK", OutBuf);//sending an HTML reply to the client
             delete []buf;
           }
           else
-          {		
+          {	
             evkeyvalq* h_buf=evhttp_request_get_output_headers(req);
+            /*if (verbose==1)
+            {
+              t=time(NULL);
+              std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"changing default content type to image/bmp..."<<std::endl;
+            }*/
             evhttp_remove_header(h_buf, "Content-Type");
-            evhttp_add_header(h_buf, "Content-Type", "image/bmp");			
+            evhttp_add_header(h_buf, "Content-Type", "image/bmp");		
+            /*if (verbose==1)
+            {
+              t=time(NULL);
+              std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"reading requested image file..."<<std::endl;		
+            }*/
             int fd=fileno(f);
+            /*if (verbose==1)
+            {
+              t=time(NULL);
+              std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"adding file data to the output buffer"<<std::endl;
+            }*/
             evbuffer_add_file(OutBuf, fd, 0, 1000000);
+            if (verbose==1)
+            {
+              t=time(NULL);
+              std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  "<<temp_request<<" 200 OK"<<std::endl;
+            }
             evhttp_send_reply(req, HTTP_OK, "OK", OutBuf);//sending an HTML reply to the client
           }
         }       
       }
+      high_resolution_clock::time_point end_time=high_resolution_clock::now();
+      duration<double> time_span = duration_cast<duration<double>>(end_time - begin_time);
+
+      std::cout<<std::this_thread::get_id()<<" "<<time_span.count()<<std::endl;
     };
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -161,12 +239,22 @@ int server(int argc, char *argv[])
       try
       {
         //creating new event_base(structure to hold information and state for a Libevent dispatch loop)
+        if (verbose==1)
+        {
+          t=time(NULL);
+          std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  creating new event_base(structure to hold information and state for a Libevent dispatch loop)"<<std::endl;
+        }
         std::unique_ptr<event_base, decltype(&event_base_free)> EventBase(event_base_new(), &event_base_free);
         if (!EventBase)
           throw std::runtime_error("Failed to create new base_event.");
         ///////////////////////////////////////////////////////////////////////////////////////////////////
 
         //creating new EvHttp 
+        if (verbose==1)
+        {
+          t=time(NULL);
+          std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  creating new EvHttp"<<std::endl;
+        }
         std::unique_ptr<evhttp, decltype(&evhttp_free)> EvHttp(evhttp_new(EventBase.get()), &evhttp_free);//evhttp_new - create a new HTTP server
                                                                                                           //evhttp_free - free the previously created HTTP server. 
         if (!EvHttp)
@@ -175,7 +263,12 @@ int server(int argc, char *argv[])
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         if (Socket == -1)
-        {
+        { 
+          if (verbose==1)
+          {
+            t=time(NULL);
+            std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  Binding an HTTP server, getting a handle for referencing the socket."<<std::endl;
+          }
           auto *BoundSock = evhttp_bind_socket_with_handle(EvHttp.get(), SrvAddress, SrvPort);//Binds an HTTP server on the specified address and port, 
                                                                                               //returns a handle for referencing the socket.
 
@@ -210,6 +303,11 @@ int server(int argc, char *argv[])
 
     for (int i = 0 ; i < SrvThreadCount ; ++i)
     {
+      if (verbose==1)
+      {
+        t=time(NULL);
+        std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  creating a new thread..."<<std::endl;
+      }
       ThreadPtr Thread(new std::thread(ThreadFunc), ThreadDeleter);
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
       if (InitExcept != std::exception_ptr())
@@ -220,7 +318,7 @@ int server(int argc, char *argv[])
       Threads.push_back(std::move(Thread));
     }
 
-    std::cout << "Press Enter fot quit." << std::endl;
+    std::cout << "Press Enter for quit." << std::endl;
     std::cin.get();
     IsRun = false;
   }
