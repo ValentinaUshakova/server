@@ -111,11 +111,6 @@ int server(int argc, char *argv[])
     void (*OnRequest)(evhttp_request *, void *) = [] (evhttp_request *req, void *)
     {
       high_resolution_clock::time_point begin_time=high_resolution_clock::now();
-      /*if (verbose==1)
-      {
-        t=time(NULL);
-        std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<" getting the output buffer"<<std::endl;
-      }*/
       auto *OutBuf = evhttp_request_get_output_buffer(req);//getting the output buffer
       if (!OutBuf)
         return;
@@ -129,11 +124,6 @@ int server(int argc, char *argv[])
             std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  /  200 OK"<<std::endl;
           }
           evbuffer_add_printf(OutBuf, "<html><body><center><h1>Welcome! <h1><h2>Enter the name of the file!</h2></center></body></html>");
-          /*if (verbose==1)
-          {
-            t=time(NULL);
-            std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"sending an HTML reply to the client"<<std::endl;
-          }*/
           evhttp_send_reply(req, HTTP_OK, "OK", OutBuf);//sending an HTML reply to the client
       }
       else 
@@ -142,11 +132,6 @@ int server(int argc, char *argv[])
         strcpy(temp_request,PATH);
         strcat(temp_request,request); 
         FILE *f;
-        /*if (verbose==1)
-        {
-            t=time(NULL);
-            std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"trying to open file "<<temp_request<<std::endl;
-        }*/
         if (strcmp(request + strlen(request) - 4, "html") == 0)
             f = fopen(temp_request, "r");
         else 
@@ -155,34 +140,17 @@ int server(int argc, char *argv[])
         {
           if (verbose==1){
             t=time(NULL);
-            std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  "<<request<<" 404 Not found"<<std::endl;
+            std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  "<<temp_request<<" 404 Not found"<<std::endl;
           }
           evbuffer_add_printf(OutBuf, "<html><body><center><h1>404   FILE  NOT  FOUND   404</h1></center></body></html>");
-          /*if (verbose==1){
-            t=time(NULL);
-            std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"sending an HTML reply to the client"<<std::endl;
-          }*/
           evhttp_send_reply(req, HTTP_NOTFOUND, "NOT FOUND", OutBuf);//sending an HTML reply to the client
         }
         else
         {
-          /*if (verbose==1){
-            t=time(NULL);
-            std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"file opening was successful!"<<std::endl;
-          }*/
           if (strcmp(request + strlen(request) - 4, "html") == 0)
           {
-            /*if (verbose==1){
-              t=time(NULL);
-              std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"reading requested html file..."<<std::endl;
-            }*/
             char *buf = new char[10000];
             fread(buf, sizeof(char), 10000, f);
-            /*if (verbose==1)
-            {
-              t=time(NULL);
-              std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"adding file data to the output buffer"<<std::endl;
-            }*/
             evbuffer_add_printf(OutBuf, buf);
             if (verbose==1)
             {
@@ -195,25 +163,11 @@ int server(int argc, char *argv[])
           else
           {	
             evkeyvalq* h_buf=evhttp_request_get_output_headers(req);
-            /*if (verbose==1)
-            {
-              t=time(NULL);
-              std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"changing default content type to image/bmp..."<<std::endl;
-            }*/
+
             evhttp_remove_header(h_buf, "Content-Type");
             evhttp_add_header(h_buf, "Content-Type", "image/bmp");		
-            /*if (verbose==1)
-            {
-              t=time(NULL);
-              std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"reading requested image file..."<<std::endl;		
-            }*/
             int fd=fileno(f);
-            /*if (verbose==1)
-            {
-              t=time(NULL);
-              std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"adding file data to the output buffer"<<std::endl;
-            }*/
-            evbuffer_add_file(OutBuf, fd, 0, 1000000);
+            evbuffer_add_file(OutBuf, fd, 0, 100000000);
             if (verbose==1)
             {
               t=time(NULL);
@@ -221,6 +175,7 @@ int server(int argc, char *argv[])
             }
             evhttp_send_reply(req, HTTP_OK, "OK", OutBuf);//sending an HTML reply to the client
           }
+           fclose(f);
         }       
       }
       high_resolution_clock::time_point end_time=high_resolution_clock::now();
