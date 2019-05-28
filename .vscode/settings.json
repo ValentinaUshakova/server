@@ -72,6 +72,10 @@
         "utility": "cpp",
         "variant": "cpp",
         "vector": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "*.tcc": "cpp",
+        "clocale": "cpp",
+        "unordered_map": "cpp",
+        "cinttypes": "cpp"
     }
 }

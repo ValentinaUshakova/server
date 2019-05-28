@@ -1,0 +1,2 @@
+var cX=window.cX||{callQueue:[]};cX.CCE=cX.CCE||{};cX.CCE.callQueue=cX.CCE.callQueue||[];cX.callQueue.push(["setSiteId","1131773623642898831"]);cX.CCE.callQueue.push(["sendPageViewEvent","eur","5aa4e9b5b97b41a40b515f5f1f0e203e63448b9d"]);
+//# sourceMappingURL=ru.euronews.com.js.map

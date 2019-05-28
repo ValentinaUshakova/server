@@ -17,19 +17,34 @@ bool verbose;
 time_t t=time(NULL);
 using namespace std::chrono;
 
+/**
+*structure for keeping the nessesary information about server 
+*/
 struct server_data
 {
-  std::string path;
-  std::string ip;
-  int port;
-  int workers;
-  bool verbose; 
-  bool help;
+  std::string path;/**< path to the server files*/
+  std::string ip;/**< server ip*/
+  int port;/**< server port*/
+  int workers;/**< number of server workers*/
+  bool verbose;/**< write log information*/ 
+  bool help;/**< ask for help*/
 };
 
 using namespace boost::program_options;
 using namespace boost::filesystem;
 
+/**
+ * @brief Function for command line parsing
+ *
+ * @file server.cpp
+ * 
+ * @see server_data
+ * 
+ * @param argc Number of arguments
+ * @param argv List of arguments
+ *
+ * @return server_data - information about server
+ */
 server_data cmline_parser(int argc, char *argv[])
 {
     server_data sd;
@@ -75,6 +90,16 @@ server_data cmline_parser(int argc, char *argv[])
     return sd;	
 } 
 
+/**
+ * @brief Server function
+ *
+ * @file server.cpp
+ * 
+ * @param argc Number of arguments
+ * @param argv List of arguments
+ *
+ * @return execution code
+ */
 int server(int argc, char *argv[])
 {
   server_data sd;
@@ -84,7 +109,7 @@ int server(int argc, char *argv[])
   if (sd.help==true)
     return 0;
 
-  if (!event_init())//event_init() - Initialize the event API.
+  if (!event_init())/**< event_init() - Initialize the event API. */
   {
     std::cerr << "Failed to init libevent." << std::endl;
     return -1;
@@ -107,15 +132,17 @@ int server(int argc, char *argv[])
 
   try
   {
-    //What_to_do_on_Requests
+    /**
+    *function for making actions on request 
+    */
     void (*OnRequest)(evhttp_request *, void *) = [] (evhttp_request *req, void *)
     {
       high_resolution_clock::time_point begin_time=high_resolution_clock::now();
-      auto *OutBuf = evhttp_request_get_output_buffer(req);//getting the output buffer
+      auto *OutBuf = evhttp_request_get_output_buffer(req);/**< getting the output buffer*/
       if (!OutBuf)
         return;
       
-      const char* request=evhttp_request_get_uri(req);
+      const char* request=req->uri;
       if (strcmp(request,"/")==0) 
       {
           if (verbose==1)
@@ -124,7 +151,7 @@ int server(int argc, char *argv[])
             std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  /  200 OK"<<std::endl;
           }
           evbuffer_add_printf(OutBuf, "<html><body><center><h1>Welcome! <h1><h2>Enter the name of the file!</h2></center></body></html>");
-          evhttp_send_reply(req, HTTP_OK, "OK", OutBuf);//sending an HTML reply to the client
+          evhttp_send_reply(req, HTTP_OK, "OK", OutBuf);/**< sending an HTML reply to the client*/
       }
       else 
       {
@@ -143,7 +170,7 @@ int server(int argc, char *argv[])
             std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  "<<temp_request<<" 404 Not found"<<std::endl;
           }
           evbuffer_add_printf(OutBuf, "<html><body><center><h1>404   FILE  NOT  FOUND   404</h1></center></body></html>");
-          evhttp_send_reply(req, HTTP_NOTFOUND, "NOT FOUND", OutBuf);//sending an HTML reply to the client
+          evhttp_send_reply(req, HTTP_NOTFOUND, "NOT FOUND", OutBuf);/**< sending an HTML reply to the client*/
         }
         else
         {
@@ -157,7 +184,7 @@ int server(int argc, char *argv[])
               t=time(NULL);
               std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  "<<temp_request<<" 200 OK"<<std::endl;
             }
-            evhttp_send_reply(req, HTTP_OK, "OK", OutBuf);//sending an HTML reply to the client
+            evhttp_send_reply(req, HTTP_OK, "OK", OutBuf);/**< sending an HTML reply to the client*/
             delete []buf;
           }
           else
@@ -173,7 +200,7 @@ int server(int argc, char *argv[])
               t=time(NULL);
               std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  "<<temp_request<<" 200 OK"<<std::endl;
             }
-            evhttp_send_reply(req, HTTP_OK, "OK", OutBuf);//sending an HTML reply to the client
+            evhttp_send_reply(req, HTTP_OK, "OK", OutBuf);/**< sending an HTML reply to the client*/
           }
            fclose(f);
         }       
@@ -183,17 +210,20 @@ int server(int argc, char *argv[])
 
       std::cout<<std::this_thread::get_id()<<" "<<time_span.count()<<std::endl;
     };
-    //////////////////////////////////////////////////////////////////////////////////////////////////
+    
 
     std::exception_ptr InitExcept;
     bool volatile IsRun = true;
     evutil_socket_t Socket = -1;
 
+    /**
+    *function for server working in thread
+    */
     auto ThreadFunc = [&] ()
     {
       try
       {
-        //creating new event_base(structure to hold information and state for a Libevent dispatch loop)
+        /**< creating new event_base(structure to hold information and state for a Libevent dispatch loop)*/
         if (verbose==1)
         {
           t=time(NULL);
@@ -202,21 +232,19 @@ int server(int argc, char *argv[])
         std::unique_ptr<event_base, decltype(&event_base_free)> EventBase(event_base_new(), &event_base_free);
         if (!EventBase)
           throw std::runtime_error("Failed to create new base_event.");
-        ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-        //creating new EvHttp 
+        /**< creating new EvHttp */
         if (verbose==1)
         {
           t=time(NULL);
           std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  creating new EvHttp"<<std::endl;
         }
-        std::unique_ptr<evhttp, decltype(&evhttp_free)> EvHttp(evhttp_new(EventBase.get()), &evhttp_free);//evhttp_new - create a new HTTP server
-                                                                                                          //evhttp_free - free the previously created HTTP server. 
+        std::unique_ptr<evhttp, decltype(&evhttp_free)> EvHttp(evhttp_new(EventBase.get()), &evhttp_free);/**< evhttp_new - create a new HTTP server*/
+                                                                                                          /**< evhttp_free - free the previously created HTTP server.*/ 
         if (!EvHttp)
           throw std::runtime_error("Failed to create new evhttp.");
-        evhttp_set_gencb(EvHttp.get(), OnRequest, nullptr);	//Set a callback for all requests that are not caught by specific callbacks. 
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+        evhttp_set_gencb(EvHttp.get(), OnRequest, nullptr);	/**< Set a callback for all requests that are not caught by specific callbacks.*/ 
+        
         if (Socket == -1)
         { 
           if (verbose==1)
@@ -224,23 +252,24 @@ int server(int argc, char *argv[])
             t=time(NULL);
             std::cout<<asctime(localtime(&t))<<std::this_thread::get_id()<<"  Binding an HTTP server, getting a handle for referencing the socket."<<std::endl;
           }
-          auto *BoundSock = evhttp_bind_socket_with_handle(EvHttp.get(), SrvAddress, SrvPort);//Binds an HTTP server on the specified address and port, 
-                                                                                              //returns a handle for referencing the socket.
+          auto *BoundSock = evhttp_bind_socket_with_handle(EvHttp.get(), SrvAddress, SrvPort);/**< Binds an HTTP server on the specified address and port, 
+                                                                                              returns a handle for referencing the socket.*/
 
           if (!BoundSock)
             throw std::runtime_error("Failed to bind server socket.");
-          if ((Socket = evhttp_bound_socket_get_fd(BoundSock)) == -1)//evhttp_bound_socket_get_fd - get the raw file descriptor referenced by an evhttp_bound_socket.
+          if ((Socket = evhttp_bound_socket_get_fd(BoundSock)) == -1)/**< evhttp_bound_socket_get_fd - get the raw file descriptor referenced by an evhttp_bound_socket.*/
             throw std::runtime_error("Failed to get server socket for next instance.");
         }
         else
         {
-          if (evhttp_accept_socket(EvHttp.get(), Socket) == -1)//evhttp_accept_socket - makes an HTTP server accept connections on the specified socket.
+          if (evhttp_accept_socket(EvHttp.get(), Socket) == -1)/**< evhttp_accept_socket - makes an HTTP server accept connections on the specified socket.*/
             throw std::runtime_error("Failed to bind server socket for new instance.");
         }
 
+        /**< Wait for events to become active, and run their callbacks.*/
         for ( ; IsRun ; )
         {
-          event_base_loop(EventBase.get(), EVLOOP_NONBLOCK);//Wait for events to become active, and run their callbacks.
+          event_base_loop(EventBase.get(), EVLOOP_NONBLOCK);
           std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
       }

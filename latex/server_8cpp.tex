@@ -1,0 +1,114 @@
+\hypertarget{server_8cpp}{}\section{server.\+cpp File Reference}
+\label{server_8cpp}\index{server.cpp@{server.cpp}}
+
+
+Function for command line parsing.  
+
+
+{\ttfamily \#include $<$stdexcept$>$}\newline
+{\ttfamily \#include $<$iostream$>$}\newline
+{\ttfamily \#include $<$memory$>$}\newline
+{\ttfamily \#include $<$chrono$>$}\newline
+{\ttfamily \#include $<$thread$>$}\newline
+{\ttfamily \#include $<$cstdint$>$}\newline
+{\ttfamily \#include $<$vector$>$}\newline
+{\ttfamily \#include $<$evhttp.\+h$>$}\newline
+{\ttfamily \#include $<$unistd.\+h$>$}\newline
+{\ttfamily \#include $<$time.\+h$>$}\newline
+{\ttfamily \#include $<$boost/program\+\_\+options.\+hpp$>$}\newline
+{\ttfamily \#include $<$boost/filesystem.\+hpp$>$}\newline
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structserver__data}{server\+\_\+data}}
+\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{server_8cpp_ae26841d4039c872fd1241f882391b93b}\label{server_8cpp_ae26841d4039c872fd1241f882391b93b}} 
+\mbox{\hyperlink{structserver__data}{server\+\_\+data}} {\bfseries cmline\+\_\+parser} (int argc, char $\ast$argv\mbox{[}$\,$\mbox{]})
+\item 
+int \mbox{\hyperlink{server_8cpp_afce24a1ecf69866a3e3d91c46b179026}{server}} (int argc, char $\ast$argv\mbox{[}$\,$\mbox{]})
+\end{DoxyCompactItemize}
+\subsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{server_8cpp_a9ff2c57ead44ec66c113197fa71ab268}\label{server_8cpp_a9ff2c57ead44ec66c113197fa71ab268}} 
+char $\ast$ {\bfseries P\+A\+TH}
+\item 
+\mbox{\Hypertarget{server_8cpp_ab3f078684998b83967d507d0f453f454}\label{server_8cpp_ab3f078684998b83967d507d0f453f454}} 
+bool {\bfseries verbose}
+\item 
+\mbox{\Hypertarget{server_8cpp_a8c916e772de92782455c9352cf1fe180}\label{server_8cpp_a8c916e772de92782455c9352cf1fe180}} 
+time\+\_\+t {\bfseries t} =time(N\+U\+LL)
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Function for command line parsing. 
+
+Server function.
+
+\begin{DoxySeeAlso}{See also}
+\mbox{\hyperlink{structserver__data}{server\+\_\+data}}
+\end{DoxySeeAlso}
+
+\begin{DoxyParams}{Parameters}
+{\em argc} & Number of arguments \\
+\hline
+{\em argv} & List of arguments\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\mbox{\hyperlink{structserver__data}{server\+\_\+data}} -\/ information about server
+\end{DoxyReturn}
+
+\begin{DoxyParams}{Parameters}
+{\em argc} & Number of arguments \\
+\hline
+{\em argv} & List of arguments\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+execution code 
+\end{DoxyReturn}
+
+
+\subsection{Function Documentation}
+\mbox{\Hypertarget{server_8cpp_afce24a1ecf69866a3e3d91c46b179026}\label{server_8cpp_afce24a1ecf69866a3e3d91c46b179026}} 
+\index{server.cpp@{server.cpp}!server@{server}}
+\index{server@{server}!server.cpp@{server.cpp}}
+\subsubsection{\texorpdfstring{server()}{server()}}
+{\footnotesize\ttfamily int server (\begin{DoxyParamCaption}\item[{int}]{argc,  }\item[{char $\ast$}]{argv\mbox{[}$\,$\mbox{]} }\end{DoxyParamCaption})}
+
+$<$ event\+\_\+init() -\/ Initialize the event A\+PI.
+
+function for making actions on request
+
+$<$ getting the output buffer
+
+$<$ sending an H\+T\+ML reply to the client
+
+$<$ sending an H\+T\+ML reply to the client
+
+$<$ sending an H\+T\+ML reply to the client
+
+$<$ sending an H\+T\+ML reply to the client
+
+function for server working in thread
+
+$<$ creating new event\+\_\+base(structure to hold information and state for a Libevent dispatch loop)
+
+$<$ creating new Ev\+Http
+
+$<$ evhttp\+\_\+new -\/ create a new H\+T\+TP server
+
+$<$ evhttp\+\_\+free -\/ free the previously created H\+T\+TP server.
+
+$<$ Set a callback for all requests that are not caught by specific callbacks.
+
+$<$ Binds an H\+T\+TP server on the specified address and port, returns a handle for referencing the socket.
+
+$<$ evhttp\+\_\+bound\+\_\+socket\+\_\+get\+\_\+fd -\/ get the raw file descriptor referenced by an evhttp\+\_\+bound\+\_\+socket.
+
+$<$ evhttp\+\_\+accept\+\_\+socket -\/ makes an H\+T\+TP server accept connections on the specified socket. 
